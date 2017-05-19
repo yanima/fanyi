@@ -1,0 +1,73 @@
+#!/usr/bin/node
+const http 	= require("http");
+const readline = require("readline");
+
+const rl = readline.createInterface({
+  	input: process.stdin,
+  	output: process.stdout,
+	});
+
+console.log("请输入英文单词▼")
+
+rl.on('line',function(line){
+	switch(line.trim()){
+		case 'q':
+			rl.close();
+	        break;
+	    default:
+	    	trans(line.trim(),function(){
+	    		console.log(`-------------------------------<${line.trim()}>-------------------------------`);
+	    		var means = this.dict_result.simple_means.symbols[0].parts;
+	    		for (var i = 0; i < means.length; i++) {
+	    			var show = `${i+1})=[${means[i].part}] ${means[i].means}.`;
+	    			if (i<means.length-1) {
+	    				show +="\n";
+	    			}
+	    			console.log(show);
+	    		};
+	    		console.log("\n\n请输入英文单词▼");
+	    	});
+
+	    	break;
+	}
+})
+
+rl.on('close', function() {
+    console.log('bye bye!');
+    process.exit(0);
+});
+
+
+
+function trans(word,fn){
+	http.get('http://fanyi.baidu.com/v2transapi?from=en&query='+word+'&to=zh', (res) => {
+  	const statusCode = res.statusCode;
+	const contentType = res.headers['content-type'];
+	  var error;
+  	if (statusCode !== 200) {
+    	error = new Error(`请求失败。\n` +`状态码: ${statusCode}`);
+  	} else if (!/^application\/json/.test(contentType)) {
+    	error = new Error(`无效的 content-type.\n` +`期望 application/json 但获取的是 ${contentType}`);
+  	}
+  	if (error) {
+    	console.log(error.message);
+	    // 消耗响应数据以释放内存
+	    res.resume();
+	    return;
+  	}
+
+  	res.setEncoding('utf8');
+  	var rawData = '';
+  	res.on('data', (chunk) => rawData += chunk);
+  	res.on('end', () => {
+    	try {
+	      var parsedData = JSON.parse(rawData);
+	      fn.call(parsedData);
+	    } catch (e) {
+	      console.log(e.message);
+	    }
+	  });
+	}).on('error', (e) => {
+	  console.log(`错误: ${e.message}`);
+	});
+}
